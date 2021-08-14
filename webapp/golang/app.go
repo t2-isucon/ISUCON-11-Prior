@@ -411,7 +411,7 @@ func createReservationHandler(w http.ResponseWriter, r *http.Request) {
 
 func schedulesHandler(w http.ResponseWriter, r *http.Request) {
 	schedules := []*Schedule{}
-	rows, err := db.QueryxContext(r.Context(), "SELECT * FROM `schedules` ORDER BY `id` DESC")
+	rows, err := db.QueryxContext(r.Context(), "SELECT schedules.*, IFNULL(reservation_counts.count, 0) as reserved FROM schedules LEFT JOIN (SELECT schedule_id, COUNT(id) AS count FROM reservations GROUP BY schedule_id) reservation_counts ON schedules.id = reservation_counts.schedule_id ORDER BY id DESC")
 	if err != nil {
 		sendErrorJSON(w, err, 500)
 		return
@@ -420,10 +420,6 @@ func schedulesHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		schedule := &Schedule{}
 		if err := rows.StructScan(schedule); err != nil {
-			sendErrorJSON(w, err, 500)
-			return
-		}
-		if err := getReservationsCount(r, schedule); err != nil {
 			sendErrorJSON(w, err, 500)
 			return
 		}
